@@ -37,12 +37,15 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	parallel, _ := p.(*types.Func)
 	c, _, _ := types.LookupFieldOrMethod(testTyp, true, testPkg, "Cleanup")
 	cleanup, _ := c.(*types.Func)
+	s, _, _ := types.LookupFieldOrMethod(testTyp, true, testPkg, "Setenv")
+	setenv, _ := s.(*types.Func)
 
 	testMap := getTestMap(ssaanalyzer, testTyp) // ex. {Test1: [TestSub1, TestSub2], Test2: [TestSub1, TestSub2, TestSub3], ...}
 	for top, subs := range testMap {
 		if len(subs) == 0 {
 			continue
 		}
+		topSetsEnv := ssafunc.IsCalled(top, setenv)
 		isParallelTop := ssafunc.IsCalled(top, parallel)
 		isPararellSub := false
 		for _, sub := range subs {
@@ -61,7 +64,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 		if isParallelTop == isPararellSub {
 			continue
-		} else if isPararellSub {
+		} else if isPararellSub && !topSetsEnv {
 			pass.Reportf(top.Pos(), "%s should call t.Parallel on the top level as well as its subtests", top.Name())
 		} else if isParallelTop {
 			pass.Reportf(top.Pos(), "%s's subtests should call t.Parallel", top.Name())
