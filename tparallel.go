@@ -45,26 +45,26 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		if len(subs) == 0 {
 			continue
 		}
-		topSetsEnv := ssafunc.IsCalled(top, setenv)
+		usesSetenv := ssafunc.IsCalled(top, setenv)
 		isParallelTop := ssafunc.IsCalled(top, parallel)
-		isPararellSub := false
+		isParallelSub := false
 		for _, sub := range subs {
-			isPararellSub = ssafunc.IsCalled(sub, parallel)
-			if isPararellSub {
+			isParallelSub = ssafunc.IsCalled(sub, parallel)
+			if isParallelSub {
 				break
 			}
 		}
 
 		if ssafunc.IsDeferCalled(top) {
 			useCleanup := ssafunc.IsCalled(top, cleanup)
-			if isPararellSub && !useCleanup {
+			if isParallelSub && !useCleanup {
 				pass.Reportf(top.Pos(), "%s should use t.Cleanup instead of defer", top.Name())
 			}
 		}
 
-		if isParallelTop == isPararellSub {
+		if isParallelTop == isParallelSub {
 			continue
-		} else if isPararellSub && !topSetsEnv {
+		} else if isParallelSub && !usesSetenv {
 			pass.Reportf(top.Pos(), "%s should call t.Parallel on the top level as well as its subtests", top.Name())
 		} else if isParallelTop {
 			pass.Reportf(top.Pos(), "%s's subtests should call t.Parallel", top.Name())
